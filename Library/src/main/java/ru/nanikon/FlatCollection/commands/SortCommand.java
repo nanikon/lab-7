@@ -36,7 +36,7 @@ public class SortCommand implements Command, Serializable {
 
     @Override
     public String execute(DBManager manager) {
-        String result = manager.readSort();
+        String result = manager.sortCollection();
         if (result.equals("")) {
             result = "Коллекция пуста, и сортировать нечего...";
         } else {

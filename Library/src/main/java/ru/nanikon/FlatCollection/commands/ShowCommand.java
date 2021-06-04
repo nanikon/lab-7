@@ -35,7 +35,8 @@ public class ShowCommand implements Command, Serializable {
 
     @Override
     public String execute(DBManager manager) {
-        String result = manager.readAll();
+        //String result = manager.readAll();
+        String result = manager.toLongString();
         if (result.equals("")) { result = "Коллекция пустая"; }
         return result;
     }

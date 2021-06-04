@@ -27,11 +27,11 @@ public class FilterLessThanViewCommand implements Command, Serializable {
     @Override
     public String execute(DBManager manager) {
         View view = ((ViewArg) params[0]).getValue();
-        String result = manager.readFilter(view.name());
+        String result = manager.viewFilteredInfo(view);
         if (result.equals("")) {
             return "Объектов коллекции со значением поля вид меньше, чем " + view + " не найдено";
         }
-        return "Объекты коллекции со значением поля вид меньше, чем " + view + "\n" + manager.readFilter(view.name());
+        return "Объекты коллекции со значением поля вид меньше, чем " + view + "\n" + result;
     }
 
     /**

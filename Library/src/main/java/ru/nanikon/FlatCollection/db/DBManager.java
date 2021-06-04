@@ -3,14 +3,17 @@ package ru.nanikon.FlatCollection.db;
 import java.sql.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import ru.nanikon.FlatCollection.data.Flat;
 import ru.nanikon.FlatCollection.data.FlatBuilder;
 import ru.nanikon.FlatCollection.data.House;
+import ru.nanikon.FlatCollection.data.View;
 import ru.nanikon.FlatCollection.exceptions.BooleanInputException;
 
 import static java.sql.ResultSet.*;
@@ -178,13 +181,17 @@ public class DBManager {
             flatStatement.setInt(11, user_id);
             flatStatement.executeUpdate();
             connection.commit();
-            return "Элемент {" + flat.toLongString() + "} успешно добавлен в коллекцию";
+            initialCollection();
+            //return "Элемент {" + flat.toLongString() + "} успешно добавлен в коллекцию";
+            return "Элемент успешно добавлен в коллекцию";
         } catch (SQLException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             try {
                 connection.rollback();
             } catch (SQLException ignored) {}
             return "При добавлении объекта произошла ошибка";
+        } catch (Exception e) {
+            return "Не удалось добавить объект, так как кто-то сломал БД";
         }
     }
 
@@ -252,6 +259,14 @@ public class DBManager {
         return result;
     }
 
+    public String viewFilteredInfo(View view) {
+        StringBuilder result = new StringBuilder();
+        for (Flat flat : collection.stream().filter((flat) -> flat.getView().compareTo(view) < 0).sorted((flat1, flat2) -> (int) (flat1.getArea() - flat2.getArea())).collect(Collectors.toList())) {
+            result.append(flat.toLongString()).append("\n");
+        }
+        return result.toString().trim();
+    }
+
     public void initialCollection() throws SQLException, BooleanInputException {
         PreparedStatement flats = connection.prepareStatement(Requests.SELECT_FLAT.QUERY);
         String result = loadCollection(flats.executeQuery());
@@ -294,10 +309,16 @@ public class DBManager {
         return result;
     }
 
+    public String sortCollection() {
+        Collections.sort(collection);
+        return toLongString();
+    }
+
     public String clear() {
         try (PreparedStatement result = connection.prepareStatement(Requests.CLEAR.QUERY)) {
             result.executeUpdate();
             connection.commit();
+            collection.clear();
             return "Коллекция успешно очищена";
         } catch (SQLException e) {
             try {
@@ -321,6 +342,15 @@ public class DBManager {
         return result;
     }
 
+    public int getAverageNumberOfRooms() {
+        if (getSize().equals("0")) {
+            return 0;
+        }
+        long result = collection.stream().mapToLong(Flat::getNumberOfRooms).sum();
+        result = result / Integer.parseInt(getSize());
+        return (int) result;
+    }
+
     public String getSize() {
         return String.valueOf(collection.size());
     }
@@ -336,9 +366,12 @@ public class DBManager {
                 result = "Элемент успешно удален";
             }
             connection.commit();
+            initialCollection();
         } catch (SQLException e) {
             e.printStackTrace();
             result = "Не удалось удалить элемент по неизвестной причине. Попробуйте позднее";
+        } catch (Exception e) {
+            return "Там это, БД сломали, глянь посмотри: " + e.getMessage();
         }
         return result;
     }
@@ -359,9 +392,13 @@ public class DBManager {
             } else {
                 result = "Элемент успешно удален";
             }
+            connection.commit();
+            initialCollection();
         } catch (SQLException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             result = "Не удалось удалить элемент по неизвестной причине. Попробуйте позднее";
+        } catch (Exception e) {
+            return "Там это, БД сломали, глянь посмотри: " + e.getMessage();
         }
         return result;
     }
@@ -399,12 +436,15 @@ public class DBManager {
                 int transport_id = tr.getInt("id");
                 flat.updateInt("transport_id", transport_id);
             }
-
-                flat.updateRow();
+            flat.updateRow();
             result = "Элемент успешно обновлен";
+            connection.commit();
+            initialCollection();
         } catch (SQLException throwables) {
-            throwables.printStackTrace();
+            //throwables.printStackTrace();
             result = "Не удалось обносить элемент по непонятной причине. Повторите попытку позднее";
+        } catch (Exception e) {
+            return "Там это, БД сломали, глянь посмотри: " + e.getMessage();
         }
         return result;
     }

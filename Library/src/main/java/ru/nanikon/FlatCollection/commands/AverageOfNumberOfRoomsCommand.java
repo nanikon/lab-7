@@ -25,7 +25,7 @@ public class AverageOfNumberOfRoomsCommand implements Command, Serializable {
      */
     @Override
     public String execute(DBManager manager) {
-        return "Среднее значение поля количество комнат по всем квартирам коллекции: " + manager.getAverage();
+        return "Среднее значение поля количество комнат по всем квартирам коллекции: " + manager.getAverageNumberOfRooms();
     }
 
     /**
