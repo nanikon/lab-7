@@ -34,7 +34,7 @@ public class DBManager {
             connection.setAutoCommit(false);
             System.out.println("Соединение установлено");
         } catch (SQLException throwables) {
-            throwables.printStackTrace();
+            //throwables.printStackTrace();
             System.err.println("Не удалось подключиться к базе данных. Завершение работы.");
             System.exit(-1);
         }

@@ -13,7 +13,9 @@ import ru.nanikon.FlatCollection.utils.Connection;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.Socket;
+import java.nio.channels.UnresolvedAddressException;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.*;
@@ -57,12 +59,16 @@ public class Client {
                 connection.stopConnection();
                 System.exit(0);
             } catch (IOException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
                 System.out.println("Не удается подключится к серверу. Пробуем снова через 5 сек");
                 try {
                     Thread.sleep(5000);
                 } catch (InterruptedException ignored) {
                 }
+            } catch (UnresolvedAddressException e) {
+                System.out.println("Не можем найти хост " + addr + ". Проверьте написание и попробуйте ещё раз.");
+                connection.stopConnection();
+                System.exit(0);
             }
         }
         System.out.println("Кажется, сегодня сервер не встанет. Приходи в следующий раз!");
@@ -243,9 +249,7 @@ public class Client {
                     System.out.println("Прежде чем зайти, вам надо выйти");
                     return;
                 }
-                connection.sendCommand(command);
-                Thread.sleep(2000);
-                answer = connection.receive();
+                answer = getAnswer(command);
                 System.out.println(answer);
                 if (answer.startsWith("Вы")) {
                     this.login = command.getLogin();
@@ -253,10 +257,8 @@ public class Client {
                 }
                 break;
             case "register":
-                connection.sendCommand(command);
-                Thread.sleep(2000);
-                answer = connection.receive();
-                System.out.println(answer);
+            case "help":
+                System.out.println(getAnswer(command));
                 break;
             case "log_out":
                 if ((login == null) & (password == null)) {
@@ -264,24 +266,12 @@ public class Client {
                 } else {
                     this.login = null;
                     this.password = null;
-                    connection.sendCommand(command);
-                    Thread.sleep(2000);
-                    answer = connection.receive();
-                    System.out.println(answer);
+                    System.out.println(getAnswer(command));
                 }
                 break;
             case "exit":
                 run = false;
-                connection.sendCommand(command);
-                Thread.sleep(2000);
-                answer = connection.receive();
-                System.out.println(answer);
-                break;
-            case "help":
-                connection.sendCommand(command);
-                Thread.sleep(2000);
-                answer = connection.receive();
-                System.out.println(answer);
+                System.out.println(getAnswer(command));
                 break;
             default:
                 if ((login == null) & (password == null)) {
@@ -289,12 +279,16 @@ public class Client {
                 } else {
                     command.setLogin(login);
                     command.setPassword(password);
-                    connection.sendCommand(command);
-                    Thread.sleep(2000);
-                    answer = connection.receive();
-                    System.out.println(answer);
+                    System.out.println(getAnswer(command));
                 }
                 break;
         }
+    }
+
+    private String getAnswer(Command command) throws IOException, InterruptedException {
+        connection.startConnection(addr, port);
+        connection.sendCommand(command);
+        Thread.sleep(2000);
+        return connection.receive();
     }
 }
