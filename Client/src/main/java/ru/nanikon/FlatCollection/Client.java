@@ -21,9 +21,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class Client {
-    private Socket s;
     private final Connection connection;
-    private final String filename;
     public static String PS1 = "$";
     public static String PS2 = ">";
     HashMap<String, Command> commands;
@@ -35,10 +33,9 @@ public class Client {
     Stack<Scanner> scannerStack = new Stack<>();
     Stack<Path> pathStack = new Stack<>();
 
-    public Client(String addr, int port, String filename) {
+    public Client(String addr, int port) {
         this.connection = new Connection();
         System.out.println("Подключаемся к серверу...");
-        this.filename = filename;
         this.port = port;
         this.addr = addr;
     }
@@ -47,7 +44,7 @@ public class Client {
         for (int i = 0; i < 5; i++) {
             try {
                 connection.startConnection(addr, port);
-                connection.sendString(filename);
+                connection.sendString("start");
                 Thread.sleep(1000);
                 commands = connection.receiveMap();
                 System.out.println("Подключились!");
@@ -152,7 +149,6 @@ public class Client {
                         try {
                             handler(command);
                         } catch (IOException e) {
-                            e.printStackTrace();
                             System.out.println("Упс, сервер отвалился и эту команду отправить не удалось. Если удастся переподключиться, вам придётся её повторить.");
                             start();
                         }

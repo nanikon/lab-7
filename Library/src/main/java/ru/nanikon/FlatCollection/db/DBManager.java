@@ -35,16 +35,9 @@ public class DBManager {
         this.password = password;
     }
 
-    public void connectToDatabase() {
-        try {
-            connection = DriverManager.getConnection(URL, login, password);
-            connection.setAutoCommit(false);
-            System.out.println("Соединение установлено");
-        } catch (SQLException throwables) {
-            //throwables.printStackTrace();
-            System.err.println("Не удалось подключиться к базе данных. Завершение работы.");
-            System.exit(-1);
-        }
+    public void connectToDatabase() throws SQLException {
+        connection = DriverManager.getConnection(URL, login, password);
+        connection.setAutoCommit(false);
     }
 
     public String registerUser(String login, String password) {
@@ -147,7 +140,11 @@ public class DBManager {
             house_id = getHouseId(flat.getHouse());
             if (house_id == -1) {
                 PreparedStatement houseStatement = connection.prepareStatement(Requests.INSERT_HOUSE.QUERY);
-                houseStatement.setString(1, flat.getHouseName());
+                if (flat.getHouseName() == null) {
+                    houseStatement.setNull(1, java.sql.Types.NULL);
+                } else {
+                    houseStatement.setString(1, flat.getHouseName());
+                }
                 if (flat.getYear() == null) {
                     houseStatement.setNull(2, java.sql.Types.NULL);
                 } else {
@@ -161,8 +158,6 @@ public class DBManager {
                 houseStatement.executeUpdate();
                 house_id = getHouseId(flat.getHouse());
             }
-            //house.next();
-            //house_id = house.getInt("id");
 
             PreparedStatement viewStatement = connection.prepareStatement(Requests.SELECT_VIEW.QUERY);
             viewStatement.setString(1, flat.getView().name());
@@ -214,17 +209,34 @@ public class DBManager {
 
     public int getHouseId(House house) {
         int result = -1;
-        try (PreparedStatement houseSelectStatement = connection.prepareStatement(Requests.SELECT_HOUSE.QUERY)) {
-            houseSelectStatement.setString(1, house.getName());
-            if (house.getYear() == null) {
-                houseSelectStatement.setNull(2, java.sql.Types.NULL);
-            } else {
-                houseSelectStatement.setLong(2, house.getYear());
+        String request = "SELECT * FROM houses WHERE house_name ";
+        if (house.getName() == null) {
+            request += " is NULL AND year";
+        } else {
+            request += " = ? AND year";
+        }
+        if (house.getYear() == null) {
+            request += " is NULL AND numberOfFloors";
+        } else {
+            request += " = ? AND numberOfFloors";
+        }
+        if (house.getNumberOfFloors() == null) {
+            request += " is NULL";
+        } else {
+            request += " = ?";
+        }
+        try (PreparedStatement houseSelectStatement = connection.prepareStatement(request)) {
+            int i = 1;
+            if (!(house.getName() == null)) {
+                houseSelectStatement.setString(i, house.getName());
+                i++;
             }
-            if (house.getNumberOfFloors() == null) {
-                houseSelectStatement.setNull(3, java.sql.Types.NULL);
-            } else {
-                houseSelectStatement.setInt(3, house.getNumberOfFloors());
+            if (!(house.getYear() == null)) {
+                houseSelectStatement.setLong(i, house.getYear());
+                i++;
+            }
+            if (!(house.getNumberOfFloors() == null)) {
+                houseSelectStatement.setInt(i, house.getNumberOfFloors());
             }
             ResultSet houseRes = houseSelectStatement.executeQuery();
             if (houseRes.next()) {

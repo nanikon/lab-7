@@ -18,12 +18,12 @@ public class App {
             System.out.println("Драйвер не найден!");
             System.exit(-1);
         }
-        try (Scanner scr = new Scanner(new FileReader("config"))) {
+        try (Scanner scr = new Scanner(new FileReader(args[0]))) {
             String url = scr.nextLine().trim();
             String login = scr.nextLine().trim();
             String password = scr.nextLine().trim();
             DBManager manager = new DBManager(url, login, password);
-            int port = Integer.parseInt("3999");
+            int port = Integer.parseInt(scr.nextLine().trim());
             Server server = new Server(port, manager, logger);
             Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
                 @Override

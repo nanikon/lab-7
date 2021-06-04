@@ -12,9 +12,11 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 
 public class Server {
@@ -32,8 +34,12 @@ public class Server {
             this.manager = manager;
             manager.connectToDatabase();
             manager.initialCollection();
+            logger.info("Соединение установлено");
         } catch (IOException e) {
             logger.error("Невозможно было создать сервер", e);
+            System.exit(0);
+        } catch (SQLException throwables) {
+            logger.error("Не удается подключится к БД", throwables);
             System.exit(0);
         } catch (Exception e) {
             logger.error("БД уронили", e);
@@ -43,8 +49,7 @@ public class Server {
 
     public void start() {
         ExecutorService readThreads = Executors.newFixedThreadPool(5);
-        ExecutorService processThreads = Executors.newCachedThreadPool();
-        running:
+        ForkJoinPool processThreads = ForkJoinPool.commonPool();
         while (!isStopped) {
             Connection connection = new Connection();
             while (!connection.startConnection(ss));

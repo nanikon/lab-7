@@ -27,7 +27,9 @@ public class HouseBuilder implements Serializable {
      * @param name value read from file or console
      */
     public void setName(String name) {
-        if (name.equals("")) {
+        if (name == null) {
+            this.name = name;
+        } else if (name.equals("")) {
             this.name = null;
         } else {
             this.name = name;
@@ -47,7 +49,9 @@ public class HouseBuilder implements Serializable {
            }
            this.year = result;
        } catch (NumberFormatException e) {
-           if (year.equals("")){
+           if (year == null) {
+               this.year = null;
+           } else if (year.equals("")){
                this.year = null;
            } else {
                throw new NumberFormatException("Поле год основания дома должно быть целым числом");
@@ -68,7 +72,9 @@ public class HouseBuilder implements Serializable {
            }
            this.numberOfFloors = result;
        } catch (NumberFormatException e) {
-           if (numberOfFloors.equals("")){
+           if (numberOfFloors == null) {
+               this.numberOfFloors = null;
+           } else if (numberOfFloors.equals("")){
                this.numberOfFloors = null;
            } else {
                throw e;
