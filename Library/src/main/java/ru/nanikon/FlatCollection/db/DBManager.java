@@ -7,6 +7,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Random;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import org.apache.commons.codec.digest.DigestUtils;
@@ -24,6 +26,8 @@ public class DBManager {
     private final String password;
     private Connection connection;
     private LinkedList<Flat> collection = new LinkedList<>();
+    private ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
+
 
     public DBManager(String URL, String login, String password) {
         this.URL = URL;
@@ -45,6 +49,9 @@ public class DBManager {
 
     public String registerUser(String login, String password) {
         String salt = generateSalt();
+        Lock wlock = lock.writeLock();
+        wlock.lock();
+        String result = "";
         try (PreparedStatement statement = connection.prepareStatement(Requests.INSERT_USER.QUERY)) {
             statement.setString(1, login);
             statement.setString(2, encryptPassword(password + salt));
@@ -63,6 +70,8 @@ public class DBManager {
             } catch (SQLException ignored) {
             }
             return "Пользователь с логином " + login + " уже существует";
+        } finally {
+            wlock.unlock();
         }
     }
 
@@ -83,6 +92,8 @@ public class DBManager {
     }
 
     public String checkUser(String login, String password) {
+        Lock rlock = lock.readLock();
+        rlock.lock();
         try (PreparedStatement statement = connection.prepareStatement(Requests.SELECT_USER.QUERY)) {
             statement.setString(1, login);
             ResultSet result = statement.executeQuery();
@@ -96,6 +107,8 @@ public class DBManager {
             }
         } catch (SQLException e) {
             return "При авторизации возникли проблемы. Повторите попытку позднее";
+        } finally {
+            rlock.unlock();
         }
     }
 
@@ -128,6 +141,8 @@ public class DBManager {
         int view_id;
         int transport_id;
         int user_id;
+        Lock wlock = lock.writeLock();
+        wlock.lock();
         try {
             house_id = getHouseId(flat.getHouse());
             if (house_id == -1) {
@@ -192,6 +207,8 @@ public class DBManager {
             return "При добавлении объекта произошла ошибка";
         } catch (Exception e) {
             return "Не удалось добавить объект, так как кто-то сломал БД";
+        } finally {
+            wlock.unlock();
         }
     }
 
@@ -260,10 +277,13 @@ public class DBManager {
     }
 
     public String viewFilteredInfo(View view) {
+        Lock rlock = lock.readLock();
+        rlock.lock();
         StringBuilder result = new StringBuilder();
         for (Flat flat : collection.stream().filter((flat) -> flat.getView().compareTo(view) < 0).sorted((flat1, flat2) -> (int) (flat1.getArea() - flat2.getArea())).collect(Collectors.toList())) {
             result.append(flat.toLongString()).append("\n");
         }
+        rlock.unlock();
         return result.toString().trim();
     }
 
@@ -301,20 +321,28 @@ public class DBManager {
     }
 
     public String toLongString() {
+        Lock rlock = lock.readLock();
+        rlock.lock();
         StringBuilder info = new StringBuilder();
         for (Flat flat: collection) {
             info.append(flat.toLongString()).append("\n");
         }
         String result = info.toString().trim();
+        rlock.unlock();
         return result;
     }
 
     public String sortCollection() {
+        Lock rlock = lock.readLock();
+        rlock.lock();
         Collections.sort(collection);
+        rlock.unlock();
         return toLongString();
     }
 
     public String clear() {
+        Lock wlock = lock.writeLock();
+        wlock.lock();
         try (PreparedStatement result = connection.prepareStatement(Requests.CLEAR.QUERY)) {
             result.executeUpdate();
             connection.commit();
@@ -325,29 +353,36 @@ public class DBManager {
                 connection.rollback();
             } catch (SQLException ignored) {}
             return "Не удалось очистить коллекцию";
+        } finally {
+            wlock.unlock();
         }
     }
 
     public String getAverage() {
-        String result = "упс";
+        Lock rlock = lock.readLock();
+        rlock.lock();
         try (PreparedStatement flats = connection.prepareStatement(Requests.AVERAGE_ROOMS.QUERY)) {
             ResultSet results = flats.executeQuery();
             results.next();
-            result = String.valueOf(results.getDouble("average_room"));
+            return String.valueOf(results.getDouble("average_room"));
         } catch (SQLException e) {
-            result = "Прочитать данные из БД не удалось, попробуйте позднее";
+            return "Прочитать данные из БД не удалось, попробуйте позднее";
         } catch(Exception e) {
-            result = "Там это, БД сломали, глянь посмотри: " + e.getMessage();
+            return "Там это, БД сломали, глянь посмотри: " + e.getMessage();
+        } finally {
+            rlock.unlock();
         }
-        return result;
     }
 
     public int getAverageNumberOfRooms() {
+        Lock rlock = lock.readLock();
+        rlock.lock();
         if (getSize().equals("0")) {
             return 0;
         }
         long result = collection.stream().mapToLong(Flat::getNumberOfRooms).sum();
         result = result / Integer.parseInt(getSize());
+        rlock.unlock();
         return (int) result;
     }
 
@@ -357,6 +392,8 @@ public class DBManager {
 
     public String deleteById(int id,String login) {
         String result = "";
+        Lock wlock = lock.writeLock();
+        wlock.lock();
         try (PreparedStatement results = connection.prepareStatement(Requests.DELETE_FLAT.QUERY)) {
             results.setInt(1, id);
             results.setString(2, login);
@@ -368,16 +405,20 @@ public class DBManager {
             connection.commit();
             initialCollection();
         } catch (SQLException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             result = "Не удалось удалить элемент по неизвестной причине. Попробуйте позднее";
         } catch (Exception e) {
             return "Там это, БД сломали, глянь посмотри: " + e.getMessage();
+        } finally {
+            wlock.unlock();
         }
         return result;
     }
 
     public String deleteByTransport(String transport, String login) {
         String result = "";
+        Lock wlock = lock.writeLock();
+        wlock.lock();
         try {
             PreparedStatement flats = connection.prepareStatement(Requests.SELECT_TRANSPORT_FLAT.QUERY);
             flats.setString(1, login);
@@ -399,12 +440,16 @@ public class DBManager {
             result = "Не удалось удалить элемент по неизвестной причине. Попробуйте позднее";
         } catch (Exception e) {
             return "Там это, БД сломали, глянь посмотри: " + e.getMessage();
+        } finally {
+            wlock.unlock();
         }
         return result;
     }
 
     public String update(int id, String login, FlatBuilder builder) {
         String result = "";
+        Lock wlock = lock.writeLock();
+        wlock.lock();
         try (PreparedStatement flatStatement = connection.prepareStatement(Requests.SELECT_FLAT_ID.QUERY, TYPE_SCROLL_INSENSITIVE, CONCUR_UPDATABLE)) {
             flatStatement.setInt(1, id);
             flatStatement.setString(2, login);
@@ -445,6 +490,8 @@ public class DBManager {
             result = "Не удалось обносить элемент по непонятной причине. Повторите попытку позднее";
         } catch (Exception e) {
             return "Там это, БД сломали, глянь посмотри: " + e.getMessage();
+        } finally {
+            wlock.unlock();
         }
         return result;
     }
