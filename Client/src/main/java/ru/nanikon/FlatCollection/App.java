@@ -11,11 +11,11 @@ public class App {
             System.out.println("Ошибка! Порт должен быть числом");
             System.exit(0);
         } catch (IndexOutOfBoundsException e) {
-            System.out.println("Ошибка! Вы не ввели все аргументы: хост, порт и имя файла");
+            System.out.println("Ошибка! Вы не ввели все аргументы: хост и порт");
             System.exit(0);
         }
         Client client = new Client(host, port);
-        //Client client = new Client("localhost", 3999, "example.json");
+        //Client client = new Client("localhost", 3999);
         client.start();
         client.run();
     }

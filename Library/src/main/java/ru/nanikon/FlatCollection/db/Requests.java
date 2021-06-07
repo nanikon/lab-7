@@ -15,6 +15,7 @@ public enum Requests {
     SELECT_USER("SELECT * FROM users WHERE login = ?"),
     INSERT_USER("INSERT INTO users (login, password, salt) values((?), (?), (?))"),
     DELETE_FLAT("DELETE FROM flats WHERE id = ? AND user_id = (SELECT id FROM users WHERE login = ?)"),
+    UPDATE_FLAT("UPDATE flats SET name = ?, x = ?, y = ?, area = ?, numberOfRooms = ?, centralHeating = ?, transport_id = (SELECT id FROM transports WHERE transport_value = ?), view_id = (SELECT id from views WHERE view_value = ?), house_id = ? WHERE id = ? AND user_id = (SELECT users.id FROM users WHERE login = ?)"),
     CLEAR("DELETE FROM flats");
     String QUERY;
 

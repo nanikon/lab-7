@@ -36,7 +36,6 @@ public class ReadingTask implements Runnable {
         try {
             Command command = receiver.receiveCommand();
             Server.logger.info("Команда принята");
-            //System.out.println("Команда принята");
             processingTask.setCommand(command);
             Server.logger.info("Команда принята, начинает исполнятся");
             processThreads.execute(processingTask);

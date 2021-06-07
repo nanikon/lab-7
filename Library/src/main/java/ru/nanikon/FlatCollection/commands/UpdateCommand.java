@@ -64,7 +64,7 @@ public class UpdateCommand implements Command, Serializable {
     public String execute(DBManager manager) {
         int id = ((IntArg) params[0]).getValue();
         FlatBuilder oldBuilder = ((FlatArg) params[1]).getBuilder();
-        return manager.update(id, login, oldBuilder);
+        return manager.updateById(id, login, oldBuilder);
     }
 
     /**

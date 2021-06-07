@@ -1,0 +1,6 @@
+# Project exclude paths
+/Client/target/
+/Library/target/
+/Server/target/
+/config
+/config_server

@@ -139,23 +139,7 @@ public class DBManager {
         try {
             house_id = getHouseId(flat.getHouse());
             if (house_id == -1) {
-                PreparedStatement houseStatement = connection.prepareStatement(Requests.INSERT_HOUSE.QUERY);
-                if (flat.getHouseName() == null) {
-                    houseStatement.setNull(1, java.sql.Types.NULL);
-                } else {
-                    houseStatement.setString(1, flat.getHouseName());
-                }
-                if (flat.getYear() == null) {
-                    houseStatement.setNull(2, java.sql.Types.NULL);
-                } else {
-                    houseStatement.setLong(2, flat.getYear());
-                }
-                if (flat.getNumberOfFloors() == null) {
-                    houseStatement.setNull(3, java.sql.Types.NULL);
-                } else {
-                    houseStatement.setInt(3, flat.getNumberOfFloors());
-                }
-                houseStatement.executeUpdate();
+                addHouse(flat.getHouse());
                 house_id = getHouseId(flat.getHouse());
             }
 
@@ -207,6 +191,26 @@ public class DBManager {
         }
     }
 
+    public void addHouse(House house) throws SQLException {
+        PreparedStatement houseStatement = connection.prepareStatement(Requests.INSERT_HOUSE.QUERY);
+        if (house.getName() == null) {
+            houseStatement.setNull(1, java.sql.Types.NULL);
+        } else {
+            houseStatement.setString(1, house.getName());
+        }
+        if (house.getYear() == null) {
+            houseStatement.setNull(2, java.sql.Types.NULL);
+        } else {
+            houseStatement.setLong(2, house.getYear());
+        }
+        if (house.getNumberOfFloors() == null) {
+            houseStatement.setNull(3, java.sql.Types.NULL);
+        } else {
+            houseStatement.setInt(3, house.getNumberOfFloors());
+        }
+        houseStatement.executeUpdate();
+    }
+
     public int getHouseId(House house) {
         int result = -1;
         String request = "SELECT * FROM houses WHERE house_name ";
@@ -243,7 +247,7 @@ public class DBManager {
                 result = houseRes.getInt("id");
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
         }
         return result;
     }
@@ -402,6 +406,17 @@ public class DBManager {
         return String.valueOf(collection.size());
     }
 
+    public Flat getById(int id) {
+        Flat result = null;
+        for (Flat flat : collection) {
+            if (flat.getId() == id) {
+                result = flat;
+                break;
+            }
+        }
+        return result;
+    }
+
     public String deleteById(int id,String login) {
         String result = "";
         Lock wlock = lock.writeLock();
@@ -417,7 +432,9 @@ public class DBManager {
             connection.commit();
             initialCollection();
         } catch (SQLException e) {
-            //e.printStackTrace();
+            try {
+                connection.rollback();
+            } catch (SQLException ignored) {}
             result = "Не удалось удалить элемент по неизвестной причине. Попробуйте позднее";
         } catch (Exception e) {
             return "Там это, БД сломали, глянь посмотри: " + e.getMessage();
@@ -448,7 +465,9 @@ public class DBManager {
             connection.commit();
             initialCollection();
         } catch (SQLException e) {
-            //e.printStackTrace();
+            try {
+                connection.rollback();
+            } catch (SQLException ignored) {}
             result = "Не удалось удалить элемент по неизвестной причине. Попробуйте позднее";
         } catch (Exception e) {
             return "Там это, БД сломали, глянь посмотри: " + e.getMessage();
@@ -475,7 +494,7 @@ public class DBManager {
             if (newFields.contains("y")) { flat.updateDouble("y", builder.getY()); }
             flat.updateTimestamp(4, Timestamp.valueOf(builder.getCreationDate().toLocalDateTime()));
             if (newFields.contains("area")) { flat.updateLong("area", builder.getArea()); }
-            if (newFields.contains("numberOfRooms")) { flat.updateLong("numberofrooms", builder.getNumberOfRooms()); }
+            if (newFields.contains("numberOfRooms")) { flat.updateInt("numberofrooms", builder.getNumberOfRooms()); }
             if (newFields.contains("centralHeating")) { flat.updateBoolean(7, builder.isCentralHeating()); }
             if (newFields.contains("view")) {
                 PreparedStatement viewStatement = connection.prepareStatement(Requests.SELECT_VIEW.QUERY);
@@ -502,6 +521,57 @@ public class DBManager {
             result = "Не удалось обносить элемент по непонятной причине. Повторите попытку позднее";
         } catch (Exception e) {
             return "Там это, БД сломали, глянь посмотри: " + e.getMessage();
+        } finally {
+            wlock.unlock();
+        }
+        return result;
+    }
+
+    public String updateById(int id, String login, FlatBuilder builder) {
+        String result = "";
+        Lock wlock = lock.writeLock();
+        wlock.lock();
+        try (PreparedStatement statement = connection.prepareStatement(Requests.UPDATE_FLAT.QUERY)) {
+            Flat oldFlat = getById(id);
+            HashSet<String> newFields = builder.getChange();
+            statement.setString(1, newFields.contains("name") ? builder.getName() : oldFlat.getName());
+            statement.setDouble(2, newFields.contains("x") ? builder.getX() : oldFlat.getX());
+            statement.setDouble(3, newFields.contains("y") ? builder.getX() : oldFlat.getX());
+            statement.setLong(4, newFields.contains("area") ? builder.getArea() : oldFlat.getArea());
+            statement.setInt(5, newFields.contains("numberOfRooms") ? builder.getNumberOfRooms() : oldFlat.getNumberOfRooms());
+            statement.setBoolean(6, newFields.contains("centralHeating") ? builder.isCentralHeating() : oldFlat.isCentralHeating());
+            statement.setString(7, newFields.contains("transport") ? builder.getTransport().name() : oldFlat.getTransport().name());
+            statement.setString(8, newFields.contains("view") ? builder.getView().name() : oldFlat.getView().name());
+            if (!newFields.contains("nameHouse")) { builder.setHouseName(String.valueOf(oldFlat.getHouseName())); }
+            if (!newFields.contains("year")) { builder.setYear(String.valueOf(oldFlat.getYear())); }
+            if (!newFields.contains("numberOfFloors")) { builder.setNumberOfFloors(String.valueOf(oldFlat.getNumberOfFloors())); }
+            House house = builder.getHouseBuilder().getResult();
+            int house_id = getHouseId(house);
+            if (house_id == -1) {
+                addHouse(house);
+                house_id = getHouseId(house);
+            }
+            statement.setInt(9, house_id);
+            statement.setInt(10, id);
+            statement.setString(11, login);
+            if (statement.executeUpdate() == 0) {
+                result = "Элемент с таким id не принадлежит вам";
+            } else {
+                result = "Элемент с id " + id + " успешно обновлен";
+            }
+            connection.commit();
+            initialCollection();
+        } catch (SQLException throwables) {
+            result = "Не удалось обносить элемент по непонятной причине. Повторите попытку позднее";
+            try {
+                connection.rollback();
+            } catch (SQLException ignored) {
+            }
+        } catch (NullPointerException e) {
+            result = "Элемент с id " + id + " не найден";
+        } catch (Exception e) {
+            result = "Там это, БД сломали, глянь посмотри: " + e.getMessage();
+            e.printStackTrace();
         } finally {
             wlock.unlock();
         }

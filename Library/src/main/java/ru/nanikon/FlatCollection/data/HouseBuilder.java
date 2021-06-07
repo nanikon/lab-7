@@ -49,7 +49,7 @@ public class HouseBuilder implements Serializable {
            }
            this.year = result;
        } catch (NumberFormatException e) {
-           if (year == null) {
+           if ((year == null) || year.equals("null")) {
                this.year = null;
            } else if (year.equals("")){
                this.year = null;
@@ -72,12 +72,12 @@ public class HouseBuilder implements Serializable {
            }
            this.numberOfFloors = result;
        } catch (NumberFormatException e) {
-           if (numberOfFloors == null) {
+           if ((numberOfFloors == null) || numberOfFloors.equals("null")) {
                this.numberOfFloors = null;
            } else if (numberOfFloors.equals("")){
                this.numberOfFloors = null;
            } else {
-               throw e;
+               throw new NumberFormatException("Число квартир в доме должно быть целым числом");
            }
        }
    }
