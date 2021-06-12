@@ -27,6 +27,9 @@ public class HistoryCommand implements Command, Serializable {
      */
     @Override
     public String execute(DBManager manager) {
+        if (!manager.chekUser(login, password)) {
+            return "Ой, вы там в приложении что-то напортачили и мы то ли логин не найдем, то ли пароль для него не тот. Перезайдите нормально!";
+        }
         StringBuilder result = new StringBuilder();
         for (String command: history) {
             if (!(command == null)) {

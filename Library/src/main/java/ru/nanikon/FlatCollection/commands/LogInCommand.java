@@ -13,7 +13,7 @@ public class LogInCommand implements Command, Serializable {
     private String password;
     @Override
     public String execute(DBManager manager) {
-        return manager.checkUser(login, password);
+        return manager.logIn(login, password);
     }
 
     /**

@@ -43,6 +43,9 @@ public class AddCommand implements Command, Serializable {
     }
 
     public String execute(DBManager manager) {
+        if (!manager.chekUser(login, password)) {
+            return "Ой, вы там в приложении что-то напортачили и мы то ли логин не найдем, то ли пароль для него не тот. Перезайдите нормально!";
+        }
         FlatBuilder builder = ((FlatArg) params[0]).getBuilder();
         return manager.addFlat(builder.getResult(), login);
     }

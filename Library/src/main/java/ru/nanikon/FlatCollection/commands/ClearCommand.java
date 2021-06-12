@@ -29,7 +29,10 @@ public class ClearCommand implements Command, Serializable {
 
     @Override
     public String execute(DBManager manager) {
-        return manager.clear();
+        if (!manager.chekUser(login, password)) {
+            return "Ой, вы там в приложении что-то напортачили и мы то ли логин не найдем, то ли пароль для него не тот. Перезайдите нормально!";
+        }
+        return manager.clear(login);
     }
 
     /**

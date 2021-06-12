@@ -20,7 +20,30 @@ public class Connection {
         selector = Selector.open();
         serverSocketChannel = SocketChannel.open();
         serverSocketChannel.configureBlocking(false);
-        serverSocketChannel.register(selector, SelectionKey.OP_CONNECT | SelectionKey.OP_WRITE | SelectionKey.OP_READ);
+        if (serverSocketChannel.connect(new InetSocketAddress(host, serverPort))) {
+            serverSocketChannel.register(selector, SelectionKey.OP_WRITE | SelectionKey.OP_READ);
+            return;
+        }
+        serverSocketChannel.register(selector, SelectionKey.OP_CONNECT);
+        while (true) {
+            selector.select();
+            Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
+            while (keys.hasNext()) {
+                SelectionKey key = keys.next();
+                keys.remove();
+                if (key.isValid() && key.isConnectable()) {
+                    SocketChannel channel = (SocketChannel) key.channel();
+                    if (channel.isConnectionPending()) {
+                        channel.finishConnect();
+                        serverSocketChannel.register(selector, SelectionKey.OP_WRITE | SelectionKey.OP_READ);
+                        return;
+                    }
+                    break;
+                }
+            }
+        }
+
+        /*serverSocketChannel.register(selector, SelectionKey.OP_CONNECT | SelectionKey.OP_WRITE | SelectionKey.OP_READ);
         serverSocketChannel.connect(new InetSocketAddress(host, serverPort));
         while (true) {
             selector.select();
@@ -36,7 +59,7 @@ public class Connection {
                     return;
                 }
             }
-        }
+        }*/
     }
 
     public void sendString(String message) throws IOException {
@@ -139,7 +162,7 @@ public class Connection {
                                 return (String) objectInputStream.readObject();
                             } catch (StreamCorruptedException ignored) {
                             } catch (ClassNotFoundException e) {
-                                e.printStackTrace();
+                                //e.printStackTrace();
                             }
                         }
                         if (socketChannel.read(byteBuffer) == -1) { throw new IOException(); }

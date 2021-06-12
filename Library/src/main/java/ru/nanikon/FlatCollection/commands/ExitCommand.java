@@ -35,7 +35,7 @@ public class ExitCommand implements Command, Serializable {
 
     public String execute(DBManager manager) {
         manager.save();
-        throw new StopConnectException();
+        return "Работа программы завершена. Коллекция была сохранена";
     }
 
     /**

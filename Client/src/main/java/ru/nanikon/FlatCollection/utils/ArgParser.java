@@ -180,6 +180,12 @@ public class ArgParser {
                     System.out.print(Client.PS2);
                 }
                 String login = scr.nextLine().trim();
+                if (login.equals("")) {
+                    if (isConsole) {
+                        System.out.println("Логин не может быть пустой строкой! Начинаем с начала");
+                        continue start;
+                    }
+                }
                 if  (isConsole) {
                     System.out.println("Введите пароль:");
                     System.out.print(Client.PS2);
@@ -189,6 +195,12 @@ public class ArgParser {
                     password_one = new String(System.console().readPassword());
                 } else {
                     password_one = scr.nextLine().trim();
+                }
+                if (password_one.equals("")) {
+                    if (isConsole) {
+                        System.out.println("Пароль не может быть пустой строкой! Начинаем с начала");
+                        continue start;
+                    }
                 }
                 if (doubles) {
                     if (isConsole) {

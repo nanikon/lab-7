@@ -84,7 +84,7 @@ public class DBManager {
         return sb.toString();
     }
 
-    public String checkUser(String login, String password) {
+    public String logIn(String login, String password) {
         Lock rlock = lock.readLock();
         rlock.lock();
         try (PreparedStatement statement = connection.prepareStatement(Requests.SELECT_USER.QUERY)) {
@@ -103,6 +103,26 @@ public class DBManager {
         } finally {
             rlock.unlock();
         }
+    }
+
+    public boolean chekUser(String login, String password) {
+        Lock rlock = lock.readLock();
+        rlock.lock();
+        boolean result = false;
+        try (PreparedStatement statement = connection.prepareStatement(Requests.SELECT_USER.QUERY)) {
+            statement.setString(1, login);
+            ResultSet results = statement.executeQuery();
+            if (results.next()) {
+                if (results.getString("password").equals(encryptPassword(password + results.getString("salt")))) {
+                    result = true;
+                }
+            }
+        } catch (SQLException throwables) {
+            result = false;
+        } finally {
+            rlock.unlock();
+        }
+        return result;
     }
 
     public boolean checkLogin(String login) {
@@ -356,22 +376,30 @@ public class DBManager {
         return toLongString();
     }
 
-    public String clear() {
+    public String clear(String login) {
+        String result = "";
         Lock wlock = lock.writeLock();
         wlock.lock();
-        try (PreparedStatement result = connection.prepareStatement(Requests.CLEAR.QUERY)) {
-            result.executeUpdate();
+        try (PreparedStatement results = connection.prepareStatement(Requests.CLEAR.QUERY)) {
+            results.setString(1, login);
+            if (results.executeUpdate() == 0) {
+                result = "Не удалось очистить коллекцию: у вас в ней нет ни одного элемента";
+            } else {
+                result = "Коллекция успешно очищена (но лишь от ваших элементов)";
+            }
             connection.commit();
-            collection.clear();
-            return "Коллекция успешно очищена";
+            initialCollection();
         } catch (SQLException e) {
             try {
                 connection.rollback();
             } catch (SQLException ignored) {}
-            return "Не удалось очистить коллекцию";
+            result = "Не удалось очистить коллекцию";
+        } catch (Exception e) {
+            return "Там это, БД сломали, глянь посмотри: " + e.getMessage();
         } finally {
             wlock.unlock();
         }
+        return result;
     }
 
     public String getAverage() {
@@ -417,7 +445,7 @@ public class DBManager {
         return result;
     }
 
-    public String deleteById(int id,String login) {
+    public String deleteById(int id, String login) {
         String result = "";
         Lock wlock = lock.writeLock();
         wlock.lock();
